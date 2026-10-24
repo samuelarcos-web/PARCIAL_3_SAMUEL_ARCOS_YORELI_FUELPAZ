@@ -1,28 +1,39 @@
-from clases import SerieDICOM
+from clases import (
+    SerieDICOM,
+    GestorDICOM
+)
+
+
+gestor = GestorDICOM()
 
 
 serie = SerieDICOM(
     r"datos/T2"
 )
 
-print(serie)
 
-
-imagen, recorte, area = (
-    serie.detectarRegionInteres(
-        plano="transversal",
-        indice=10,
-        tamano_kernel=3,
-        iteraciones=2,
-        umbral=180,
-        area_minima_pixeles=100,
-        fraccion_maxima=0.15
-    )
+gestor.agregar(
+    "T2",
+    serie
 )
 
+
+print(gestor)
 
 print(
-    "\nÁrea detectada:",
-    area,
-    "mm²"
+    "\nEstudios almacenados:",
+    gestor.listar()
 )
+
+
+estudio_encontrado = gestor.buscar(
+    "T2"
+)
+
+
+if estudio_encontrado is not None:
+
+    print(
+        "\nPaciente encontrado:",
+        estudio_encontrado.nombre_paciente
+    )

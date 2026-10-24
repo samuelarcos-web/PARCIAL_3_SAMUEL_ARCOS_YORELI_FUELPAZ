@@ -1513,3 +1513,93 @@ class SerieDICOM:
             )
 
         return texto
+
+
+class GestorDICOM:
+
+    def __init__(self):
+
+        self.estudios = {}
+
+
+    def agregar(
+        self,
+        nombre,
+        estudio
+    ):
+
+        if not isinstance(
+            estudio,
+            SerieDICOM
+        ):
+
+            raise ValueError(
+                "El objeto debe ser de tipo SerieDICOM."
+            )
+
+        self.estudios[
+            nombre
+        ] = estudio
+
+
+    def buscar(
+        self,
+        nombre
+    ):
+
+        return self.estudios.get(
+            nombre
+        )
+
+
+    def listar(self):
+
+        return list(
+            self.estudios.keys()
+        )
+
+
+    def eliminar(
+        self,
+        nombre
+    ):
+
+        if nombre in self.estudios:
+
+            del self.estudios[
+                nombre
+            ]
+
+            return True
+
+        return False
+
+
+    def __str__(self):
+
+        if len(self.estudios) == 0:
+
+            return (
+                "No hay estudios DICOM almacenados."
+            )
+
+        texto = (
+            "\nESTUDIOS DICOM ALMACENADOS\n"
+        )
+
+        texto += (
+            "-" * 40
+            + "\n"
+        )
+
+        for nombre, estudio in (
+            self.estudios.items()
+        ):
+
+            texto += (
+                f"{nombre} -> "
+                f"{estudio.nombre_paciente} "
+                f"({estudio.modalidad})\n"
+            )
+
+        return texto
