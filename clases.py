@@ -1,7 +1,8 @@
 import os
-import pydicom
+
 import cv2
 import numpy as np
+import pydicom
 
 
 class SerieDICOM:
@@ -21,50 +22,29 @@ class SerieDICOM:
         self.pixel_spacing = None
         self.slice_thickness = None
         self.tamano_voxel = None
+
+        # Matrices originales
         self.matrices_pixeles = []
 
-        # Estos atributos se completarán más adelante
+        # Cortes escalados al doble
         self.cortes_escalados = []
+
+        # Volumen 3D
         self.volumen = None
+
+        # Resultado de la corrección de ángulo
         self.imagen_corregida = None
 
+        # Proceso de carga
         self._cargar_dicoms()
         self._extraer_metadatos()
         self._escalar_cortes()
         self._reconstruir_volumen()
 
-    def _escalar_cortes(self):
 
-        self.cortes_escalados = []
-
-        for matriz in self.matrices_pixeles:
-
-            corte_escalado = cv2.resize(
-                matriz,
-                None,
-                fx=2,
-                fy=2,
-                interpolation=cv2.INTER_LINEAR
-            )
-
-            self.cortes_escalados.append(
-                corte_escalado
-            )
-
-    def _reconstruir_volumen(self):
-
-        if len(self.cortes_escalados) == 0:
-
-            raise ValueError(
-                "No existen cortes escalados "
-                "para construir el volumen."
-            )
-
-        self.volumen = np.stack(
-            self.cortes_escalados,
-            axis=0
-        )
-
+    # =====================================================
+    # BUSCAR ARCHIVOS DICOM
+    # =====================================================
 
     def _buscar_archivos_dicom(self):
 
@@ -89,6 +69,10 @@ class SerieDICOM:
 
         return archivos_dicom
 
+
+    # =====================================================
+    # CARGAR DATASETS DICOM
+    # =====================================================
 
     def _cargar_dicoms(self):
 
@@ -125,7 +109,7 @@ class SerieDICOM:
                 "No fue posible cargar ningún archivo DICOM."
             )
 
-        # Orden inicial usando InstanceNumber
+        # Orden inicial por InstanceNumber
         self.datasets.sort(
             key=lambda ds: int(
                 getattr(
@@ -136,6 +120,10 @@ class SerieDICOM:
             )
         )
 
+
+    # =====================================================
+    # EXTRAER METADATOS
+    # =====================================================
 
     def _extraer_metadatos(self):
 
@@ -173,6 +161,7 @@ class SerieDICOM:
             )
         )
 
+        # PixelSpacing
         if hasattr(
             primer_dataset,
             "PixelSpacing"
@@ -194,6 +183,7 @@ class SerieDICOM:
                 None
             )
 
+        # SliceThickness
         if hasattr(
             primer_dataset,
             "SliceThickness"
@@ -207,18 +197,130 @@ class SerieDICOM:
 
             self.slice_thickness = None
 
+        # Tamaño del voxel
         self.tamano_voxel = (
             self.pixel_spacing[0],
             self.pixel_spacing[1],
             self.slice_thickness
         )
 
-        # Guardamos las matrices de píxeles de todos los cortes
+        # Matrices de píxeles originales
         self.matrices_pixeles = [
             dataset.pixel_array
             for dataset in self.datasets
         ]
 
+
+    # =====================================================
+    # ESCALAR CORTES AL DOBLE
+    # =====================================================
+
+    def _escalar_cortes(self):
+
+        self.cortes_escalados = []
+
+        for matriz in self.matrices_pixeles:
+
+            corte_escalado = cv2.resize(
+                matriz,
+                None,
+                fx=2,
+                fy=2,
+                interpolation=cv2.INTER_LINEAR
+            )
+
+            self.cortes_escalados.append(
+                corte_escalado
+            )
+
+
+    # =====================================================
+    # RECONSTRUIR VOLUMEN 3D
+    # =====================================================
+
+    def _reconstruir_volumen(self):
+
+        if len(self.cortes_escalados) == 0:
+
+            raise ValueError(
+                "No existen cortes escalados "
+                "para construir el volumen."
+            )
+
+        self.volumen = np.stack(
+            self.cortes_escalados,
+            axis=0
+        )
+
+
+    # =====================================================
+    # CORREGIR ÁNGULO
+    # =====================================================
+
+    def corregirAngulo(self, angulo):
+
+        if not isinstance(
+            angulo,
+            (int, float)
+        ):
+
+            raise ValueError(
+                "El ángulo debe ser un valor numérico."
+            )
+
+        if self.volumen is None:
+
+            raise ValueError(
+                "No existe un volumen para corregir."
+            )
+
+        volumen_rotado = []
+
+        for corte in self.volumen:
+
+            alto, ancho = corte.shape
+
+            # Centro de la imagen
+            centro = (
+                ancho // 2,
+                alto // 2
+            )
+
+            # Matriz de rotación
+            matriz_rotacion = (
+                cv2.getRotationMatrix2D(
+                    centro,
+                    angulo,
+                    1.0
+                )
+            )
+
+            # Aplicar transformación geométrica
+            corte_rotado = cv2.warpAffine(
+                corte,
+                matriz_rotacion,
+                (
+                    ancho,
+                    alto
+                )
+            )
+
+            volumen_rotado.append(
+                corte_rotado
+            )
+
+        # Guardar resultado como atributo
+        self.imagen_corregida = np.stack(
+            volumen_rotado,
+            axis=0
+        )
+
+        return self.imagen_corregida
+
+
+    # =====================================================
+    # REPRESENTACIÓN DEL OBJETO
+    # =====================================================
 
     def __str__(self):
 
@@ -226,19 +328,23 @@ class SerieDICOM:
         texto += "-" * 45 + "\n"
 
         texto += (
-            f"Paciente: {self.nombre_paciente}\n"
+            f"Paciente: "
+            f"{self.nombre_paciente}\n"
         )
 
         texto += (
-            f"Modalidad: {self.modalidad}\n"
+            f"Modalidad: "
+            f"{self.modalidad}\n"
         )
 
         texto += (
-            f"Filas: {self.filas}\n"
+            f"Filas: "
+            f"{self.filas}\n"
         )
 
         texto += (
-            f"Columnas: {self.columnas}\n"
+            f"Columnas: "
+            f"{self.columnas}\n"
         )
 
         texto += (
@@ -266,6 +372,13 @@ class SerieDICOM:
             texto += (
                 f"Forma del volumen 3D: "
                 f"{self.volumen.shape}\n"
+            )
+
+        if self.imagen_corregida is not None:
+
+            texto += (
+                f"Forma del volumen corregido: "
+                f"{self.imagen_corregida.shape}\n"
             )
 
         return texto
