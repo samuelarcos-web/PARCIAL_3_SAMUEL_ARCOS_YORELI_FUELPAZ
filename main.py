@@ -7,11 +7,26 @@ serie = SerieDICOM(
 
 print(serie)
 
-volumen_corregido = serie.corregirAngulo(
-    15
+corte_ecualizado = serie.ecualizarCorte(
+    10
 )
 
 print(
-    "Forma del volumen corregido:",
-    volumen_corregido.shape
+    "Tipo de dato del corte ecualizado:",
+    corte_ecualizado.dtype
+)
+
+print(
+    "Forma del corte ecualizado:",
+    corte_ecualizado.shape
+)
+
+print(
+    "Valor mínimo:",
+    corte_ecualizado.min()
+)
+
+print(
+    "Valor máximo:",
+    corte_ecualizado.max()
 )

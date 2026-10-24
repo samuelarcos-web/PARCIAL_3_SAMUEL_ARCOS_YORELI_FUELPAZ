@@ -3,6 +3,7 @@ import os
 import cv2
 import numpy as np
 import pydicom
+import matplotlib.pyplot as plt
 
 
 class SerieDICOM:
@@ -317,6 +318,181 @@ class SerieDICOM:
 
         return self.imagen_corregida
 
+    def ecualizarCorte(self, indice_corte):
+
+        # -------------------------------------------------
+        # VALIDAR QUE EXISTA EL VOLUMEN
+        # -------------------------------------------------
+
+        if self.volumen is None:
+
+            raise ValueError(
+                "No existe un volumen para procesar."
+            )
+
+        # -------------------------------------------------
+        # VALIDAR ÍNDICE DEL CORTE
+        # -------------------------------------------------
+
+        if not isinstance(indice_corte, int):
+
+            raise ValueError(
+                "El índice del corte debe ser un número entero."
+            )
+
+        if (
+            indice_corte < 0
+            or indice_corte >= self.volumen.shape[0]
+        ):
+
+            raise ValueError(
+                f"El índice debe estar entre 0 y "
+                f"{self.volumen.shape[0] - 1}."
+            )
+
+        # -------------------------------------------------
+        # CREAR COPIA DEL VOLUMEN
+        # -------------------------------------------------
+
+        volumen_copia = self.volumen.copy()
+
+        # Seleccionar corte
+        corte = volumen_copia[indice_corte]
+
+        # -------------------------------------------------
+        # NORMALIZAR A UINT8
+        # -------------------------------------------------
+
+        corte_uint8 = cv2.normalize(
+            corte,
+            None,
+            0,
+            255,
+            cv2.NORM_MINMAX
+        ).astype(np.uint8)
+
+        # -------------------------------------------------
+        # ECUALIZACIÓN DEL HISTOGRAMA
+        # -------------------------------------------------
+
+        corte_ecualizado = cv2.equalizeHist(
+            corte_uint8
+        )
+
+        # Guardar resultados como atributos
+        self.corte_normalizado = corte_uint8
+        self.corte_ecualizado = corte_ecualizado
+
+        # -------------------------------------------------
+        # CREAR CARPETA DE RESULTADOS
+        # -------------------------------------------------
+
+        carpeta_resultados = os.path.join(
+            "resultados",
+            "ecualizacion"
+        )
+
+        os.makedirs(
+            carpeta_resultados,
+            exist_ok=True
+        )
+
+        # -------------------------------------------------
+        # HISTOGRAMA
+        # -------------------------------------------------
+
+        plt.figure(
+            figsize=(8, 5)
+        )
+
+        plt.hist(
+            corte_ecualizado.ravel(),
+            bins=256,
+            range=[0, 256]
+        )
+
+        plt.title(
+            f"Histograma del corte ecualizado "
+            f"{indice_corte}"
+        )
+
+        plt.xlabel(
+            "Intensidad de gris"
+        )
+
+        plt.ylabel(
+            "Frecuencia"
+        )
+
+        plt.tight_layout()
+
+        ruta_histograma = os.path.join(
+            carpeta_resultados,
+            f"histograma_corte_{indice_corte}.png"
+        )
+
+        plt.savefig(
+            ruta_histograma,
+            dpi=300
+        )
+
+        plt.show()
+
+        plt.close()
+
+        # -------------------------------------------------
+        # MOSTRAR IMAGEN ECUALIZADA
+        # -------------------------------------------------
+
+        plt.figure(
+            figsize=(7, 7)
+        )
+
+        plt.imshow(
+            corte_ecualizado,
+            cmap="gray"
+        )
+
+        plt.title(
+            f"Corte ecualizado {indice_corte}"
+        )
+
+        plt.axis(
+            "off"
+        )
+
+        plt.tight_layout()
+
+        ruta_grafico = os.path.join(
+            carpeta_resultados,
+            f"grafico_ecualizado_corte_{indice_corte}.png"
+        )
+
+        plt.savefig(
+            ruta_grafico,
+            dpi=300,
+            bbox_inches="tight"
+        )
+
+        plt.show()
+
+        plt.close()
+
+        # -------------------------------------------------
+        # GUARDAR IMAGEN ECUALIZADA
+        # -------------------------------------------------
+
+        ruta_imagen = os.path.join(
+            carpeta_resultados,
+            f"imagen_ecualizada_corte_{indice_corte}.png"
+        )
+
+        cv2.imwrite(
+            ruta_imagen,
+            corte_ecualizado
+        )
+
+        return corte_ecualizado
 
     # =====================================================
     # REPRESENTACIÓN DEL OBJETO
