@@ -1,5 +1,7 @@
 import os
 import pydicom
+import cv2
+import numpy as np
 
 
 class SerieDICOM:
@@ -28,6 +30,40 @@ class SerieDICOM:
 
         self._cargar_dicoms()
         self._extraer_metadatos()
+        self._escalar_cortes()
+        self._reconstruir_volumen()
+
+    def _escalar_cortes(self):
+
+        self.cortes_escalados = []
+
+        for matriz in self.matrices_pixeles:
+
+            corte_escalado = cv2.resize(
+                matriz,
+                None,
+                fx=2,
+                fy=2,
+                interpolation=cv2.INTER_LINEAR
+            )
+
+            self.cortes_escalados.append(
+                corte_escalado
+            )
+
+    def _reconstruir_volumen(self):
+
+        if len(self.cortes_escalados) == 0:
+
+            raise ValueError(
+                "No existen cortes escalados "
+                "para construir el volumen."
+            )
+
+        self.volumen = np.stack(
+            self.cortes_escalados,
+            axis=0
+        )
 
 
     def _buscar_archivos_dicom(self):
@@ -224,5 +260,12 @@ class SerieDICOM:
             f"Tamaño del voxel: "
             f"{self.tamano_voxel} mm\n"
         )
+
+        if self.volumen is not None:
+
+            texto += (
+                f"Forma del volumen 3D: "
+                f"{self.volumen.shape}\n"
+            )
 
         return texto
