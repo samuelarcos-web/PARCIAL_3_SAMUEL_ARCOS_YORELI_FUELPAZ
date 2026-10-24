@@ -1,7 +1,5 @@
 from clases import SerieDICOM
 
-import matplotlib.pyplot as plt
-
 
 serie = SerieDICOM(
     r"datos/T2"
@@ -10,88 +8,21 @@ serie = SerieDICOM(
 print(serie)
 
 
-original, binaria, apertura, aspect = serie.segmentarCorte(
-    plano="transversal",
-    indice=10,
-    tamano_kernel=3,
-    iteraciones=2,
-    umbral=180
+imagen, recorte, area = (
+    serie.detectarRegionInteres(
+        plano="transversal",
+        indice=10,
+        tamano_kernel=3,
+        iteraciones=2,
+        umbral=180,
+        area_minima_pixeles=100,
+        fraccion_maxima=0.15
+    )
 )
 
-
-plt.figure(
-    figsize=(15, 5)
-)
-
-
-plt.subplot(
-    1,
-    3,
-    1
-)
-
-plt.imshow(
-    original,
-    cmap="gray",
-    aspect=aspect
-)
-
-plt.title(
-    "Corte normalizado"
-)
-
-plt.axis(
-    "off"
-)
-
-
-plt.subplot(
-    1,
-    3,
-    2
-)
-
-plt.imshow(
-    binaria,
-    cmap="gray",
-    aspect=aspect
-)
-
-plt.title(
-    "Imagen binarizada"
-)
-
-plt.axis(
-    "off"
-)
-
-
-plt.subplot(
-    1,
-    3,
-    3
-)
-
-plt.imshow(
-    apertura,
-    cmap="gray",
-    aspect=aspect
-)
-
-plt.title(
-    "Apertura morfológica"
-)
-
-plt.axis(
-    "off"
-)
 
 print(
-    "Umbral utilizado:",
-    serie.ultimo_umbral
+    "\nÁrea detectada:",
+    area,
+    "mm²"
 )
-
-
-plt.tight_layout()
-
-plt.show()
