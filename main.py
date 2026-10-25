@@ -27,20 +27,52 @@ def mostrar_menu():
     print("0. Salir")
 
 
+def buscar_carpetas_dicom(
+    carpeta_base="datos"
+):
+
+    carpetas_dicom = []
+
+    for raiz, carpetas, archivos in os.walk(
+        carpeta_base
+    ):
+
+        contiene_dicom = any(
+            archivo.lower().endswith(".dcm")
+            for archivo in archivos
+        )
+
+        if contiene_dicom:
+
+            carpetas_dicom.append(
+                raiz
+            )
+
+    carpetas_dicom.sort()
+
+    return carpetas_dicom
+
+
 def seleccionar_carpeta():
 
-    carpetas = [
-        "datos/T2",
-        "datos/Sarcoma",
-        "datos/PPMI"
-    ]
+    carpetas = buscar_carpetas_dicom()
 
-    print("\nCarpetas disponibles:")
+    if len(carpetas) == 0:
+
+        raise ValueError(
+            "No se encontraron carpetas "
+            "con archivos DICOM."
+        )
+
+    print(
+        "\nSeries DICOM disponibles:"
+    )
 
     for i, carpeta in enumerate(
         carpetas,
         start=1
     ):
+
         print(
             f"{i}. {carpeta}"
         )
@@ -51,12 +83,14 @@ def seleccionar_carpeta():
 
             opcion = int(
                 input(
-                    "Seleccione una carpeta: "
+                    "Seleccione una serie: "
                 )
             )
 
             if (
-                1 <= opcion <= len(carpetas)
+                1
+                <= opcion
+                <= len(carpetas)
             ):
 
                 return carpetas[
