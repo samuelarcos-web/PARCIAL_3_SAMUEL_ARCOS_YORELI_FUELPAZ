@@ -6,6 +6,10 @@ import pydicom
 import matplotlib.pyplot as plt
 
 
+# =========================================================
+# CLASE PRINCIPAL PARA SERIES DICOM
+# =========================================================
+
 class SerieDICOM:
 
     def __init__(self, ruta_carpeta):
@@ -13,7 +17,7 @@ class SerieDICOM:
         self.ruta_carpeta = ruta_carpeta
 
         # =================================================
-        # DATASETS DICOM
+        # DATASETS
         # =================================================
 
         self.datasets = []
@@ -24,6 +28,7 @@ class SerieDICOM:
 
         self.filas = None
         self.columnas = None
+
         self.nombre_paciente = None
         self.modalidad = None
 
@@ -66,13 +71,31 @@ class SerieDICOM:
         self.ultimo_umbral = None
 
         # =================================================
-        # PROCESAMIENTO AUTOMÁTICO INICIAL
+        # PROCESAMIENTO INICIAL
         # =================================================
 
         self._cargar_dicoms()
         self._extraer_metadatos()
         self._escalar_cortes()
         self._reconstruir_volumen()
+
+
+    # =====================================================
+    # NOMBRE DEL ESTUDIO
+    # =====================================================
+
+    def _nombreEstudio(self):
+
+        nombre = os.path.basename(
+            os.path.normpath(
+                self.ruta_carpeta
+            )
+        )
+
+        return nombre.replace(
+            " ",
+            "_"
+        )
 
 
     # =====================================================
@@ -104,7 +127,7 @@ class SerieDICOM:
 
 
     # =====================================================
-    # CARGAR DATASETS DICOM
+    # CARGAR DATASETS
     # =====================================================
 
     def _cargar_dicoms(self):
@@ -114,8 +137,7 @@ class SerieDICOM:
         if len(archivos) == 0:
 
             raise ValueError(
-                "No se encontraron archivos DICOM "
-                "en la carpeta seleccionada."
+                "No se encontraron archivos DICOM."
             )
 
         for ruta in archivos:
@@ -133,15 +155,18 @@ class SerieDICOM:
             except Exception as error:
 
                 print(
-                    f"No se pudo cargar {ruta}: {error}"
+                    f"No se pudo cargar "
+                    f"{ruta}: {error}"
                 )
 
         if len(self.datasets) == 0:
 
             raise ValueError(
-                "No fue posible cargar ningún archivo DICOM."
+                "No fue posible cargar "
+                "ningún archivo DICOM."
             )
 
+        # Orden inicial por InstanceNumber
         self.datasets.sort(
             key=lambda ds: int(
                 getattr(
@@ -193,6 +218,7 @@ class SerieDICOM:
             )
         )
 
+        # PixelSpacing
         if hasattr(
             primer_dataset,
             "PixelSpacing"
@@ -214,6 +240,7 @@ class SerieDICOM:
                 None
             )
 
+        # SliceThickness
         if hasattr(
             primer_dataset,
             "SliceThickness"
@@ -227,12 +254,14 @@ class SerieDICOM:
 
             self.slice_thickness = None
 
+        # Tamaño original del voxel
         self.tamano_voxel = (
             self.pixel_spacing[0],
             self.pixel_spacing[1],
             self.slice_thickness
         )
 
+        # Matrices de píxeles
         self.matrices_pixeles = [
             dataset.pixel_array
             for dataset in self.datasets
@@ -261,6 +290,10 @@ class SerieDICOM:
                 corte_escalado
             )
 
+        # Al duplicar el número de píxeles,
+        # el tamaño físico de cada píxel
+        # en X e Y queda a la mitad.
+
         if (
             self.pixel_spacing[0] is not None
             and self.pixel_spacing[1] is not None
@@ -278,7 +311,9 @@ class SerieDICOM:
 
     def _reconstruir_volumen(self):
 
-        if len(self.cortes_escalados) == 0:
+        if len(
+            self.cortes_escalados
+        ) == 0:
 
             raise ValueError(
                 "No existen cortes escalados "
@@ -295,7 +330,10 @@ class SerieDICOM:
     # CORREGIR ÁNGULO
     # =====================================================
 
-    def corregirAngulo(self, angulo):
+    def corregirAngulo(
+        self,
+        angulo
+    ):
 
         if not isinstance(
             angulo,
@@ -303,13 +341,13 @@ class SerieDICOM:
         ):
 
             raise ValueError(
-                "El ángulo debe ser un valor numérico."
+                "El ángulo debe ser numérico."
             )
 
         if self.volumen is None:
 
             raise ValueError(
-                "No existe un volumen para corregir."
+                "No existe un volumen."
             )
 
         volumen_rotado = []
@@ -353,15 +391,18 @@ class SerieDICOM:
 
 
     # =====================================================
-    # NORMALIZAR Y ECUALIZAR CORTE
+    # ECUALIZAR CORTE
     # =====================================================
 
-    def ecualizarCorte(self, indice_corte):
+    def ecualizarCorte(
+        self,
+        indice_corte
+    ):
 
         if self.volumen is None:
 
             raise ValueError(
-                "No existe un volumen para procesar."
+                "No existe un volumen."
             )
 
         if not isinstance(
@@ -370,25 +411,30 @@ class SerieDICOM:
         ):
 
             raise ValueError(
-                "El índice del corte debe ser entero."
+                "El índice debe ser entero."
             )
 
         if (
             indice_corte < 0
-            or indice_corte >= self.volumen.shape[0]
+            or indice_corte
+            >= self.volumen.shape[0]
         ):
 
             raise ValueError(
-                f"El índice debe estar entre 0 y "
+                f"El índice debe estar entre "
+                f"0 y "
                 f"{self.volumen.shape[0] - 1}."
             )
 
-        volumen_copia = self.volumen.copy()
+        volumen_copia = (
+            self.volumen.copy()
+        )
 
         corte = volumen_copia[
             indice_corte
         ]
 
+        # Normalizar a uint8
         corte_uint8 = cv2.normalize(
             corte,
             None,
@@ -399,8 +445,11 @@ class SerieDICOM:
             np.uint8
         )
 
-        corte_ecualizado = cv2.equalizeHist(
-            corte_uint8
+        # Ecualización
+        corte_ecualizado = (
+            cv2.equalizeHist(
+                corte_uint8
+            )
         )
 
         self.corte_normalizado = (
@@ -411,9 +460,16 @@ class SerieDICOM:
             corte_ecualizado
         )
 
-        carpeta_resultados = os.path.join(
-            "resultados",
-            "ecualizacion"
+        nombre_estudio = (
+            self._nombreEstudio()
+        )
+
+        carpeta_resultados = (
+            os.path.join(
+                "resultados",
+                nombre_estudio,
+                "ecualizacion"
+            )
         )
 
         os.makedirs(
@@ -421,7 +477,10 @@ class SerieDICOM:
             exist_ok=True
         )
 
-        # Histograma
+        # =================================================
+        # HISTOGRAMA
+        # =================================================
+
         plt.figure(
             figsize=(8, 5)
         )
@@ -436,8 +495,8 @@ class SerieDICOM:
         )
 
         plt.title(
-            f"Histograma del corte ecualizado "
-            f"{indice_corte}"
+            f"Histograma del corte "
+            f"ecualizado {indice_corte}"
         )
 
         plt.xlabel(
@@ -452,7 +511,11 @@ class SerieDICOM:
 
         ruta_histograma = os.path.join(
             carpeta_resultados,
-            f"histograma_corte_{indice_corte}.png"
+            (
+                f"{nombre_estudio}_"
+                f"histograma_corte_"
+                f"{indice_corte}.png"
+            )
         )
 
         plt.savefig(
@@ -463,7 +526,10 @@ class SerieDICOM:
         plt.show()
         plt.close()
 
-        # Imagen ecualizada
+        # =================================================
+        # GRÁFICO DE LA IMAGEN
+        # =================================================
+
         plt.figure(
             figsize=(7, 7)
         )
@@ -486,8 +552,11 @@ class SerieDICOM:
 
         ruta_grafico = os.path.join(
             carpeta_resultados,
-            f"grafico_ecualizado_corte_"
-            f"{indice_corte}.png"
+            (
+                f"{nombre_estudio}_"
+                f"grafico_ecualizado_"
+                f"corte_{indice_corte}.png"
+            )
         )
 
         plt.savefig(
@@ -499,10 +568,17 @@ class SerieDICOM:
         plt.show()
         plt.close()
 
+        # =================================================
+        # GUARDAR IMAGEN
+        # =================================================
+
         ruta_imagen = os.path.join(
             carpeta_resultados,
-            f"imagen_ecualizada_corte_"
-            f"{indice_corte}.png"
+            (
+                f"{nombre_estudio}_"
+                f"imagen_ecualizada_"
+                f"corte_{indice_corte}.png"
+            )
         )
 
         cv2.imwrite(
@@ -514,7 +590,7 @@ class SerieDICOM:
 
 
     # =====================================================
-    # OBTENER CORTE SEGÚN EL PLANO
+    # OBTENER CORTE SEGÚN PLANO
     # =====================================================
 
     def obtenerCorte(
@@ -526,26 +602,35 @@ class SerieDICOM:
         if self.volumen is None:
 
             raise ValueError(
-                "No existe un volumen 3D."
+                "No existe volumen 3D."
             )
 
-        if self.pixel_spacing_escalado is None:
+        if (
+            self.pixel_spacing_escalado
+            is None
+        ):
 
             raise ValueError(
                 "No se pudo determinar "
-                "el PixelSpacing escalado."
+                "PixelSpacing."
             )
 
-        if self.slice_thickness is None:
+        if (
+            self.slice_thickness
+            is None
+        ):
 
             raise ValueError(
                 "No se pudo determinar "
-                "el SliceThickness."
+                "SliceThickness."
             )
 
         plano = plano.lower()
 
-        # Transversal
+        # =================================================
+        # TRANSVERSAL
+        # =================================================
+
         if plano in [
             "transversal",
             "axial"
@@ -553,11 +638,13 @@ class SerieDICOM:
 
             if (
                 indice < 0
-                or indice >= self.volumen.shape[0]
+                or indice
+                >= self.volumen.shape[0]
             ):
 
                 raise ValueError(
-                    f"El índice transversal debe estar entre 0 y "
+                    f"Índice transversal "
+                    f"entre 0 y "
                     f"{self.volumen.shape[0] - 1}."
                 )
 
@@ -573,16 +660,21 @@ class SerieDICOM:
                 self.pixel_spacing_escalado[1]
             )
 
-        # Coronal
+        # =================================================
+        # CORONAL
+        # =================================================
+
         elif plano == "coronal":
 
             if (
                 indice < 0
-                or indice >= self.volumen.shape[1]
+                or indice
+                >= self.volumen.shape[1]
             ):
 
                 raise ValueError(
-                    f"El índice coronal debe estar entre 0 y "
+                    f"Índice coronal "
+                    f"entre 0 y "
                     f"{self.volumen.shape[1] - 1}."
                 )
 
@@ -598,16 +690,21 @@ class SerieDICOM:
                 self.pixel_spacing_escalado[1]
             )
 
-        # Sagital
+        # =================================================
+        # SAGITAL
+        # =================================================
+
         elif plano == "sagital":
 
             if (
                 indice < 0
-                or indice >= self.volumen.shape[2]
+                or indice
+                >= self.volumen.shape[2]
             ):
 
                 raise ValueError(
-                    f"El índice sagital debe estar entre 0 y "
+                    f"Índice sagital "
+                    f"entre 0 y "
                     f"{self.volumen.shape[2] - 1}."
                 )
 
@@ -626,8 +723,7 @@ class SerieDICOM:
         else:
 
             raise ValueError(
-                "El plano debe ser transversal, "
-                "coronal o sagital."
+                "Plano inválido."
             )
 
         return (
@@ -655,14 +751,14 @@ class SerieDICOM:
         ):
 
             raise ValueError(
-                "El tamaño del kernel debe ser entero."
+                "Kernel debe ser entero."
             )
 
         if tamano_kernel <= 0:
 
             raise ValueError(
-                "El tamaño del kernel "
-                "debe ser mayor que cero."
+                "Kernel debe ser mayor "
+                "que cero."
             )
 
         if not isinstance(
@@ -671,19 +767,21 @@ class SerieDICOM:
         ):
 
             raise ValueError(
-                "Las iteraciones deben ser enteras."
+                "Iteraciones deben ser enteras."
             )
 
         if iteraciones <= 0:
 
             raise ValueError(
-                "Las iteraciones deben ser "
+                "Iteraciones deben ser "
                 "mayores que cero."
             )
 
-        corte, aspect = self.obtenerCorte(
-            plano,
-            indice
+        corte, aspect = (
+            self.obtenerCorte(
+                plano,
+                indice
+            )
         )
 
         corte_copia = corte.copy()
@@ -697,6 +795,10 @@ class SerieDICOM:
         ).astype(
             np.uint8
         )
+
+        # =================================================
+        # UMBRAL
+        # =================================================
 
         if umbral is None:
 
@@ -718,8 +820,8 @@ class SerieDICOM:
             ):
 
                 raise ValueError(
-                    "El umbral debe estar "
-                    "entre 0 y 255."
+                    "Umbral entre "
+                    "0 y 255."
                 )
 
             valor_umbral, binaria = (
@@ -730,6 +832,10 @@ class SerieDICOM:
                     cv2.THRESH_BINARY
                 )
             )
+
+        # =================================================
+        # APERTURA
+        # =================================================
 
         kernel = np.ones(
             (
@@ -775,7 +881,7 @@ class SerieDICOM:
 
 
     # =====================================================
-    # TAMAÑO FÍSICO DEL PÍXEL SEGÚN PLANO
+    # TAMAÑO FÍSICO DEL PÍXEL
     # =====================================================
 
     def _tamanoPixelPlano(
@@ -821,8 +927,7 @@ class SerieDICOM:
         else:
 
             raise ValueError(
-                "El plano debe ser transversal, "
-                "coronal o sagital."
+                "Plano inválido."
             )
 
         return (
@@ -859,9 +964,8 @@ class SerieDICOM:
             umbral
         )
 
-        # =================================================
-        # REGIONES PARA CONNECTED COMPONENTS
-        # =================================================
+        # La apertura contiene las regiones
+        # blancas que se analizarán.
 
         componentes = apertura.copy()
 
@@ -870,7 +974,7 @@ class SerieDICOM:
         )
 
         # =================================================
-        # VISUALIZACIÓN DE DIAGNÓSTICO
+        # DIAGNÓSTICO
         # =================================================
 
         plt.figure(
@@ -919,7 +1023,7 @@ class SerieDICOM:
         plt.show()
 
         # =================================================
-        # COMPONENTES CONECTADOS
+        # CONNECTED COMPONENTS
         # =================================================
 
         (
@@ -949,10 +1053,6 @@ class SerieDICOM:
             area_total_imagen
             * fraccion_maxima
         )
-
-        # =================================================
-        # MOSTRAR COMPONENTES
-        # =================================================
 
         print(
             "\nNúmero de componentes detectados:",
@@ -993,7 +1093,8 @@ class SerieDICOM:
                 f"Componente {etiqueta}: "
                 f"area={area}, "
                 f"x={x}, y={y}, "
-                f"ancho={ancho}, alto={alto}"
+                f"ancho={ancho}, "
+                f"alto={alto}"
             )
 
         # =================================================
@@ -1035,17 +1136,28 @@ class SerieDICOM:
             toca_borde = (
                 x <= 0
                 or y <= 0
-                or x + ancho >= ancho_imagen - 1
-                or y + alto >= alto_imagen - 1
+                or x + ancho
+                >= ancho_imagen - 1
+                or y + alto
+                >= alto_imagen - 1
             )
 
             if toca_borde:
+
                 continue
 
-            if area < area_minima_pixeles:
+            if (
+                area
+                < area_minima_pixeles
+            ):
+
                 continue
 
-            if area > area_maxima_pixeles:
+            if (
+                area
+                > area_maxima_pixeles
+            ):
+
                 continue
 
             candidatos.append(
@@ -1062,10 +1174,11 @@ class SerieDICOM:
         if len(candidatos) == 0:
 
             raise ValueError(
-                "No se encontraron regiones de interés "
-                "con los criterios seleccionados."
+                "No se encontraron regiones "
+                "de interés."
             )
 
+        # Seleccionar la más grande
         candidatos.sort(
             key=lambda elemento: elemento[1],
             reverse=True
@@ -1081,18 +1194,24 @@ class SerieDICOM:
         ) = candidatos[0]
 
         # =================================================
-        # MÁSCARA DEL COMPONENTE SELECCIONADO
+        # MÁSCARA DEL COMPONENTE
         # =================================================
 
-        mascara_region = np.zeros_like(
-            componentes
+        mascara_region = (
+            np.zeros_like(
+                componentes
+            )
         )
 
         mascara_region[
-            etiquetas == etiqueta_seleccionada
+            etiquetas
+            == etiqueta_seleccionada
         ] = 255
 
-        posiciones_y, posiciones_x = np.where(
+        (
+            posiciones_y,
+            posiciones_x
+        ) = np.where(
             mascara_region == 255
         )
 
@@ -1126,7 +1245,7 @@ class SerieDICOM:
         )
 
         # =================================================
-        # ÁREA Y DIMENSIONES FÍSICAS
+        # DIMENSIONES FÍSICAS
         # =================================================
 
         (
@@ -1175,7 +1294,7 @@ class SerieDICOM:
         )
 
         # =================================================
-        # DIBUJAR CÍRCULO
+        # CÍRCULO
         # =================================================
 
         cv2.circle(
@@ -1191,11 +1310,12 @@ class SerieDICOM:
         )
 
         # =================================================
-        # TEXTO DEL ÁREA
+        # TEXTO
         # =================================================
 
         texto_area = (
-            f"Area: {area_mm2:.2f} mm2"
+            f"Area: "
+            f"{area_mm2:.2f} mm2"
         )
 
         cv2.putText(
@@ -1207,7 +1327,9 @@ class SerieDICOM:
                     10
                 ),
                 max(
-                    centro[1] - radio - 20,
+                    centro[1]
+                    - radio
+                    - 20,
                     30
                 )
             ),
@@ -1221,10 +1343,6 @@ class SerieDICOM:
             2,
             cv2.LINE_AA
         )
-
-        # =================================================
-        # TEXTO DE DIMENSIONES
-        # =================================================
 
         texto_dimensiones = (
             f"{ancho_mm:.2f} x "
@@ -1240,7 +1358,9 @@ class SerieDICOM:
                     10
                 ),
                 min(
-                    centro[1] + radio + 30,
+                    centro[1]
+                    + radio
+                    + 30,
                     alto_imagen - 10
                 )
             ),
@@ -1260,28 +1380,36 @@ class SerieDICOM:
         )
 
         # =================================================
-        # RECORTAR REGIÓN
+        # RECORTE CENTRADO EN EL CÍRCULO
         # =================================================
 
         margen = 30
 
         x_inicio = max(
-            centro[0] - radio - margen,
+            centro[0]
+            - radio
+            - margen,
             0
         )
 
         y_inicio = max(
-            centro[1] - radio - margen,
+            centro[1]
+            - radio
+            - margen,
             0
         )
 
         x_fin = min(
-            centro[0] + radio + margen,
+            centro[0]
+            + radio
+            + margen,
             ancho_imagen
         )
 
         y_fin = min(
-            centro[1] + radio + margen,
+            centro[1]
+            + radio
+            + margen,
             alto_imagen
         )
 
@@ -1295,12 +1423,19 @@ class SerieDICOM:
         )
 
         # =================================================
-        # GUARDAR RESULTADOS
+        # CARPETA DE RESULTADOS
         # =================================================
 
-        carpeta_resultados = os.path.join(
-            "resultados",
-            "segmentacion"
+        nombre_estudio = (
+            self._nombreEstudio()
+        )
+
+        carpeta_resultados = (
+            os.path.join(
+                "resultados",
+                nombre_estudio,
+                "segmentacion"
+            )
         )
 
         os.makedirs(
@@ -1308,9 +1443,14 @@ class SerieDICOM:
             exist_ok=True
         )
 
+        # =================================================
+        # GUARDAR IMAGEN
+        # =================================================
+
         ruta_imagen = os.path.join(
             carpeta_resultados,
             (
+                f"{nombre_estudio}_"
                 f"{plano}_"
                 f"corte_{indice}_"
                 f"region.png"
@@ -1328,7 +1468,7 @@ class SerieDICOM:
         )
 
         # =================================================
-        # GRAFICAR RESULTADO FINAL
+        # GRÁFICO FINAL
         # =================================================
 
         plt.figure(
@@ -1366,9 +1506,11 @@ class SerieDICOM:
 
         plt.title(
             (
-                f"Región recortada\n"
-                f"Área: {area_mm2:.2f} mm²"
-                f"{ancho_mm:.2f} x {alto_mm:.2f} mm"
+                "Región recortada\n"
+                f"Área: "
+                f"{area_mm2:.2f} mm²\n"
+                f"{ancho_mm:.2f} x "
+                f"{alto_mm:.2f} mm"
             )
         )
 
@@ -1381,6 +1523,7 @@ class SerieDICOM:
         ruta_grafico = os.path.join(
             carpeta_resultados,
             (
+                f"{nombre_estudio}_"
                 f"{plano}_"
                 f"corte_{indice}_"
                 f"grafico.png"
@@ -1426,7 +1569,7 @@ class SerieDICOM:
         )
 
         print(
-            "Radio del círculo:",
+            "Radio:",
             radio,
             "píxeles"
         )
@@ -1439,7 +1582,7 @@ class SerieDICOM:
 
 
     # =====================================================
-    # REPRESENTACIÓN DEL OBJETO
+    # REPRESENTACIÓN
     # =====================================================
 
     def __str__(self):
@@ -1498,14 +1641,20 @@ class SerieDICOM:
             f"{self.tamano_voxel} mm\n"
         )
 
-        if self.volumen is not None:
+        if (
+            self.volumen
+            is not None
+        ):
 
             texto += (
                 f"Forma del volumen 3D: "
                 f"{self.volumen.shape}\n"
             )
 
-        if self.imagen_corregida is not None:
+        if (
+            self.imagen_corregida
+            is not None
+        ):
 
             texto += (
                 f"Forma del volumen corregido: "
@@ -1514,6 +1663,10 @@ class SerieDICOM:
 
         return texto
 
+
+# =========================================================
+# GESTOR DE ESTUDIOS DICOM
+# =========================================================
 
 class GestorDICOM:
 
@@ -1534,7 +1687,8 @@ class GestorDICOM:
         ):
 
             raise ValueError(
-                "El objeto debe ser de tipo SerieDICOM."
+                "El objeto debe ser "
+                "SerieDICOM."
             )
 
         self.estudios[
@@ -1577,7 +1731,9 @@ class GestorDICOM:
 
     def __str__(self):
 
-        if len(self.estudios) == 0:
+        if len(
+            self.estudios
+        ) == 0:
 
             return (
                 "No hay estudios DICOM almacenados."
@@ -1592,9 +1748,10 @@ class GestorDICOM:
             + "\n"
         )
 
-        for nombre, estudio in (
-            self.estudios.items()
-        ):
+        for (
+            nombre,
+            estudio
+        ) in self.estudios.items():
 
             texto += (
                 f"{nombre} -> "
