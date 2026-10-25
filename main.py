@@ -6,26 +6,167 @@ from clases import (
 )
 
 
+# =========================================================
+# OBJETOS PRINCIPALES
+# =========================================================
+
 gestor = GestorDICOM()
 estudio_activo = None
 
 
-def mostrar_menu():
+# =========================================================
+# VALIDACIONES
+# =========================================================
 
-    print("\n" + "=" * 55)
-    print("       SISTEMA DE PROCESAMIENTO DICOM")
-    print("=" * 55)
+def validar_entero(
+    mensaje,
+    minimo=None,
+    maximo=None
+):
 
-    print("\n1. Cargar estudio DICOM")
-    print("2. Mostrar información del estudio")
-    print("3. Corregir ángulo")
-    print("4. Ecualizar corte")
-    print("5. Segmentar región de interés")
-    print("6. Listar estudios cargados")
-    print("7. Activar estudio almacenado")
-    print("8. Eliminar estudio del gestor")
-    print("0. Salir")
+    while True:
 
+        try:
+
+            valor = int(
+                input(mensaje)
+            )
+
+            if (
+                minimo is not None
+                and valor < minimo
+            ):
+
+                print(
+                    f"El valor mínimo permitido "
+                    f"es {minimo}."
+                )
+
+                continue
+
+            if (
+                maximo is not None
+                and valor > maximo
+            ):
+
+                print(
+                    f"El valor máximo permitido "
+                    f"es {maximo}."
+                )
+
+                continue
+
+            return valor
+
+        except ValueError:
+
+            print(
+                "Debe ingresar un número entero."
+            )
+
+
+def validar_float(
+    mensaje,
+    minimo=None,
+    maximo=None
+):
+
+    while True:
+
+        try:
+
+            valor = float(
+                input(mensaje)
+            )
+
+            if (
+                minimo is not None
+                and valor < minimo
+            ):
+
+                print(
+                    f"El valor mínimo permitido "
+                    f"es {minimo}."
+                )
+
+                continue
+
+            if (
+                maximo is not None
+                and valor > maximo
+            ):
+
+                print(
+                    f"El valor máximo permitido "
+                    f"es {maximo}."
+                )
+
+                continue
+
+            return valor
+
+        except ValueError:
+
+            print(
+                "Debe ingresar un valor numérico."
+            )
+
+
+def validar_plano():
+
+    planos_validos = [
+        "transversal",
+        "axial",
+        "coronal",
+        "sagital"
+    ]
+
+    while True:
+
+        plano = input(
+            "Plano "
+            "(transversal/coronal/sagital): "
+        ).strip().lower()
+
+        if plano in planos_validos:
+
+            return plano
+
+        print(
+            "Plano inválido."
+        )
+
+
+def obtener_maximo_indice(
+    estudio,
+    plano
+):
+
+    if plano in [
+        "transversal",
+        "axial"
+    ]:
+
+        return (
+            estudio.volumen.shape[0] - 1
+        )
+
+    elif plano == "coronal":
+
+        return (
+            estudio.volumen.shape[1] - 1
+        )
+
+    elif plano == "sagital":
+
+        return (
+            estudio.volumen.shape[2] - 1
+        )
+
+
+# =========================================================
+# BUSCAR CARPETAS DICOM
+# =========================================================
 
 def buscar_carpetas_dicom(
     carpeta_base="datos"
@@ -53,6 +194,10 @@ def buscar_carpetas_dicom(
     return carpetas_dicom
 
 
+# =========================================================
+# SELECCIONAR CARPETA DICOM
+# =========================================================
+
 def seleccionar_carpeta():
 
     carpetas = buscar_carpetas_dicom()
@@ -79,59 +224,90 @@ def seleccionar_carpeta():
 
     while True:
 
-        try:
+        opcion = validar_entero(
+            "Seleccione una serie: ",
+            1,
+            len(carpetas)
+        )
 
-            opcion = int(
-                input(
-                    "Seleccione una serie: "
-                )
-            )
+        return carpetas[
+            opcion - 1
+        ]
 
-            if (
-                1
-                <= opcion
-                <= len(carpetas)
-            ):
 
-                return carpetas[
-                    opcion - 1
-                ]
+# =========================================================
+# MOSTRAR MENÚ
+# =========================================================
 
-            print(
-                "Opción fuera de rango."
-            )
+def mostrar_menu():
 
-        except ValueError:
+    print(
+        "\n" + "=" * 55
+    )
 
-            print(
-                "Debe ingresar un número entero."
-            )
+    print(
+        "       SISTEMA DE PROCESAMIENTO DICOM"
+    )
 
+    print(
+        "=" * 55
+    )
+
+    print(
+        "\n1. Cargar estudio DICOM"
+    )
+
+    print(
+        "2. Mostrar información del estudio"
+    )
+
+    print(
+        "3. Corregir ángulo"
+    )
+
+    print(
+        "4. Ecualizar corte"
+    )
+
+    print(
+        "5. Segmentar región de interés"
+    )
+
+    print(
+        "6. Listar estudios cargados"
+    )
+
+    print(
+        "7. Activar estudio almacenado"
+    )
+
+    print(
+        "8. Eliminar estudio del gestor"
+    )
+
+    print(
+        "0. Salir"
+    )
+
+
+# =========================================================
+# PROGRAMA PRINCIPAL
+# =========================================================
 
 while True:
 
     mostrar_menu()
 
-    try:
-
-        opcion = int(
-            input(
-                "\nSeleccione una opción: "
-            )
-        )
-
-    except ValueError:
-
-        print(
-            "\nDebe ingresar un número entero."
-        )
-
-        continue
+    opcion = validar_entero(
+        "\nSeleccione una opción: ",
+        0,
+        8
+    )
 
 
-    # =============================================
-    # SALIR
-    # =============================================
+    # =====================================================
+    # 0. SALIR
+    # =====================================================
 
     if opcion == 0:
 
@@ -142,9 +318,9 @@ while True:
         break
 
 
-    # =============================================
-    # CARGAR ESTUDIO
-    # =============================================
+    # =====================================================
+    # 1. CARGAR ESTUDIO DICOM
+    # =====================================================
 
     elif opcion == 1:
 
@@ -156,10 +332,14 @@ while True:
                 ruta
             )
 
-            nombre = os.path.basename(
-                os.path.normpath(
-                    ruta
-                )
+            nombre = os.path.relpath(
+                ruta,
+                "datos"
+            )
+
+            nombre = nombre.replace(
+                os.sep,
+                " - "
             )
 
             gestor.agregar(
@@ -186,9 +366,9 @@ while True:
             )
 
 
-    # =============================================
-    # INFORMACIÓN
-    # =============================================
+    # =====================================================
+    # 2. MOSTRAR INFORMACIÓN
+    # =====================================================
 
     elif opcion == 2:
 
@@ -205,9 +385,9 @@ while True:
             )
 
 
-    # =============================================
-    # CORREGIR ÁNGULO
-    # =============================================
+    # =====================================================
+    # 3. CORREGIR ÁNGULO
+    # =====================================================
 
     elif opcion == 3:
 
@@ -221,10 +401,8 @@ while True:
 
             try:
 
-                angulo = float(
-                    input(
-                        "Ingrese ángulo en grados: "
-                    )
+                angulo = validar_float(
+                    "Ingrese ángulo en grados: "
                 )
 
                 estudio_activo.corregirAngulo(
@@ -235,6 +413,11 @@ while True:
                     "\nCorrección aplicada correctamente."
                 )
 
+                print(
+                    "Forma del volumen corregido:",
+                    estudio_activo.imagen_corregida.shape
+                )
+
             except Exception as error:
 
                 print(
@@ -243,9 +426,9 @@ while True:
                 )
 
 
-    # =============================================
-    # ECUALIZAR CORTE
-    # =============================================
+    # =====================================================
+    # 4. ECUALIZAR CORTE
+    # =====================================================
 
     elif opcion == 4:
 
@@ -259,14 +442,30 @@ while True:
 
             try:
 
-                indice = int(
-                    input(
-                        "Ingrese índice del corte: "
-                    )
+                maximo = (
+                    estudio_activo
+                    .volumen
+                    .shape[0]
+                    - 1
+                )
+
+                print(
+                    f"\nCortes disponibles: "
+                    f"0 a {maximo}"
+                )
+
+                indice = validar_entero(
+                    "Ingrese índice del corte: ",
+                    0,
+                    maximo
                 )
 
                 estudio_activo.ecualizarCorte(
                     indice
+                )
+
+                print(
+                    "\nEcualización realizada correctamente."
                 )
 
             except Exception as error:
@@ -277,9 +476,9 @@ while True:
                 )
 
 
-    # =============================================
-    # SEGMENTAR REGIÓN
-    # =============================================
+    # =====================================================
+    # 5. SEGMENTAR REGIÓN DE INTERÉS
+    # =====================================================
 
     elif opcion == 5:
 
@@ -293,27 +492,35 @@ while True:
 
             try:
 
-                plano = input(
-                    "Plano "
-                    "(transversal/coronal/sagital): "
-                ).strip().lower()
+                plano = validar_plano()
 
-                indice = int(
-                    input(
-                        "Índice del corte: "
+                maximo_indice = (
+                    obtener_maximo_indice(
+                        estudio_activo,
+                        plano
                     )
                 )
 
-                kernel = int(
-                    input(
-                        "Tamaño del kernel: "
-                    )
+                print(
+                    f"\nÍndices disponibles "
+                    f"para {plano}: "
+                    f"0 a {maximo_indice}"
                 )
 
-                iteraciones = int(
-                    input(
-                        "Número de iteraciones: "
-                    )
+                indice = validar_entero(
+                    "Índice del corte: ",
+                    0,
+                    maximo_indice
+                )
+
+                kernel = validar_entero(
+                    "Tamaño del kernel: ",
+                    1
+                )
+
+                iteraciones = validar_entero(
+                    "Número de iteraciones: ",
+                    1
                 )
 
                 respuesta = input(
@@ -321,17 +528,30 @@ while True:
                     "(s/n): "
                 ).strip().lower()
 
+                while respuesta not in [
+                    "s",
+                    "n"
+                ]:
+
+                    print(
+                        "Debe responder s o n."
+                    )
+
+                    respuesta = input(
+                        "¿Desea usar umbral automático? "
+                        "(s/n): "
+                    ).strip().lower()
+
                 if respuesta == "s":
 
                     umbral = None
 
                 else:
 
-                    umbral = float(
-                        input(
-                            "Ingrese umbral "
-                            "(0-255): "
-                        )
+                    umbral = validar_float(
+                        "Ingrese umbral (0-255): ",
+                        0,
+                        255
                     )
 
                 estudio_activo.detectarRegionInteres(
@@ -342,6 +562,10 @@ while True:
                     umbral=umbral
                 )
 
+                print(
+                    "\nSegmentación realizada correctamente."
+                )
+
             except Exception as error:
 
                 print(
@@ -350,9 +574,9 @@ while True:
                 )
 
 
-    # =============================================
-    # LISTAR ESTUDIOS
-    # =============================================
+    # =====================================================
+    # 6. LISTAR ESTUDIOS
+    # =====================================================
 
     elif opcion == 6:
 
@@ -361,9 +585,9 @@ while True:
         )
 
 
-    # =============================================
-    # ACTIVAR ESTUDIO
-    # =============================================
+    # =====================================================
+    # 7. ACTIVAR ESTUDIO ALMACENADO
+    # =====================================================
 
     elif opcion == 7:
 
@@ -390,75 +614,90 @@ while True:
                     f"{i}. {nombre}"
                 )
 
-            try:
+            seleccion = validar_entero(
+                "Seleccione estudio: ",
+                1,
+                len(nombres)
+            )
 
-                seleccion = int(
-                    input(
-                        "Seleccione estudio: "
-                    )
-                )
+            nombre = nombres[
+                seleccion - 1
+            ]
 
-                if (
-                    1 <= seleccion <= len(nombres)
-                ):
+            estudio_activo = gestor.buscar(
+                nombre
+            )
 
-                    nombre = nombres[
-                        seleccion - 1
-                    ]
-
-                    estudio_activo = gestor.buscar(
-                        nombre
-                    )
-
-                    print(
-                        "\nEstudio activo:",
-                        nombre
-                    )
-
-                else:
-
-                    print(
-                        "\nSelección inválida."
-                    )
-
-            except ValueError:
-
-                print(
-                    "\nDebe ingresar un número entero."
-                )
+            print(
+                "\nEstudio activo:",
+                nombre
+            )
 
 
-    # =============================================
-    # ELIMINAR ESTUDIO
-    # =============================================
+    # =====================================================
+    # 8. ELIMINAR ESTUDIO
+    # =====================================================
 
     elif opcion == 8:
 
-        nombre = input(
-            "Nombre del estudio a eliminar: "
-        ).strip()
+        nombres = gestor.listar()
 
-        if gestor.eliminar(
-            nombre
-        ):
+        if len(nombres) == 0:
 
             print(
-                "\nEstudio eliminado."
+                "\nNo hay estudios almacenados."
             )
 
         else:
 
             print(
-                "\nNo se encontró ese estudio."
+                "\nEstudios disponibles:"
             )
 
+            for i, nombre in enumerate(
+                nombres,
+                start=1
+            ):
 
-    # =============================================
-    # OPCIÓN INVÁLIDA
-    # =============================================
+                print(
+                    f"{i}. {nombre}"
+                )
 
-    else:
+            seleccion = validar_entero(
+                "Seleccione estudio a eliminar: ",
+                1,
+                len(nombres)
+            )
 
-        print(
-            "\nOpción inválida."
-        )
+            nombre = nombres[
+                seleccion - 1
+            ]
+
+            eliminado = gestor.eliminar(
+                nombre
+            )
+
+            if eliminado:
+
+                print(
+                    "\nEstudio eliminado:",
+                    nombre
+                )
+
+                if (
+                    estudio_activo
+                    is not None
+                    and gestor.buscar(
+                        nombre
+                    )
+                    is None
+                ):
+
+                    estudio_activo = None
+
+            else:
+
+                print(
+                    "\nNo se pudo eliminar "
+                    "el estudio."
+                )
